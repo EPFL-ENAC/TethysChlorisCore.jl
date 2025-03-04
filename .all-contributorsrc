@@ -1,0 +1,5 @@
+{
+  "projectName": "TethysChlorisCore",
+  "projectOwner": "EPFL-ENAC",
+  "files": ["README.md", "docs/src/index.md"]
+}

@@ -1,0 +1,7 @@
+name = "TethysChlorisCore"
+uuid = "c22758e7-e854-5bdb-8df2-7602c47a9d98"
+authors = ["Hugo Solleder <hugo.solleder@epfl.ch>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.10"
