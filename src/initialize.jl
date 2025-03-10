@@ -14,12 +14,8 @@ Initialize model components with optional fields. The model component requires a
 - `T{FT}`: Initialized component struct of type T with floating point precision FT
 """
 function initialize(
-    ::Type{FT},
-    ::Type{T},
-    data,
-    args...,
+    ::Type{FT}, ::Type{T}, data, args...
 ) where {FT<:AbstractFloat,T<:AbstractModelComponent}
-
     required_fields = parentmodule(T).get_required_fields(T)
 
     # Validate required fields
@@ -52,7 +48,7 @@ function initialize(
             field_type = fieldtype(T, field)
             if !isa(value, field_type)
                 throw(
-                    ArgumentError("Field $field must be $field_type, got $(typeof(value))"),
+                    ArgumentError("Field $field must be $field_type, got $(typeof(value))")
                 )
             end
             dict_kwargs[field] = value
@@ -74,7 +70,7 @@ This is a default method that can be specialized for specific subtypes that need
 
 """
 function get_required_fields(
-    ::Type{T},
+    ::Type{T}
 ) where {T<:Union{AbstractModelComponent,AbstractModelComponentSet}}
     return Symbol[]
 end
@@ -111,10 +107,7 @@ This is a default implementation that passes through the input data unchanged.
 Custom preprocessing can be implemented by defining methods for specific types.
 """
 function preprocess_fields(
-    ::Type{FT},
-    ::Type{T},
-    data,
-    args...,
+    ::Type{FT}, ::Type{T}, data, args...
 ) where {FT<:AbstractFloat,T<:AbstractModelComponent}
     return data
 end
@@ -137,9 +130,7 @@ Initialize fields for auxiliary variables based on their dimension specification
 - `Dict{String,Any}`: Dictionary of initialized fields
 """
 function preprocess_fields(
-    ::Type{FT},
-    ::Type{T},
-    data::NCDataset,
+    ::Type{FT}, ::Type{T}, data::NCDataset
 ) where {FT<:AbstractFloat,T<:AbstractAuxiliaryVariables}
     processed = Dict{String,Any}()
 
@@ -178,7 +169,7 @@ function initialize_field(
     data::NCDataset,
     name::String,
     dims::Tuple;
-    default::Union{Nothing,Number} = nothing,
+    default::Union{Nothing,Number}=nothing,
 ) where {FT<:AbstractFloat}
     arr = zeros(FT, dims)
 
@@ -199,7 +190,6 @@ function initialize_field(
 
     return arr
 end
-
 
 # Default: no dimensions are provided
 """

@@ -35,9 +35,7 @@ end
 
         # Test type mismatch
         @test_throws ArgumentError initialize(
-            Float64,
-            TestParams,
-            Dict("required" => "wrong", "optional" => 2.0),
+            Float64, TestParams, Dict("required" => "wrong", "optional" => 2.0)
         )
     end
 
@@ -64,7 +62,7 @@ end
             @test haskey(processed, "var2")
             @test size(processed["var1"]) == (10, 5)
             @test size(processed["var2"]) == (10, 5, 3)
-            close(ds)
+            return close(ds)
         end
     end
 
@@ -74,7 +72,7 @@ end
             ds = NCDataset(filename, "c")
 
             # Test initialization with default
-            field = initialize_field(Float64, ds, "nonexistent", (2, 3); default = 1.0)
+            field = initialize_field(Float64, ds, "nonexistent", (2, 3); default=1.0)
             @test size(field) == (2, 3)
             @test all(field[1, :] .== 1.0)
 
@@ -83,7 +81,7 @@ end
             @test size(field) == (2, 3)
             @test all(field .== 0.0)
 
-            close(ds)
+            return close(ds)
         end
     end
 

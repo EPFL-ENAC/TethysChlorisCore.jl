@@ -12,7 +12,7 @@ using TethysChlorisCore.ModelComponents
         # Test auxiliary variables hierarchy
         @test AbstractAuxiliaryVariables <: AbstractIndividualModelComponent
         @test AbstractHeightDependentAuxiliaryVariables <:
-              AbstractHeightDependentModelComponent
+            AbstractHeightDependentModelComponent
         @test AbstractAuxiliaryVariableSet <: AbstractModelComponentSet
 
         # Test forcing inputs hierarchy
@@ -55,9 +55,9 @@ using TethysChlorisCore.ModelComponents
         @test ConcreteModelComponent(1.0) isa AbstractModelComponent{Float64}
 
         @test ConcreteHeightDependentComponent([1.0f0], [0.0f0]) isa
-              AbstractHeightDependentModelComponent{Float32}
+            AbstractHeightDependentModelComponent{Float32}
         @test ConcreteHeightDependentComponent([1.0], [0.0]) isa
-              AbstractHeightDependentModelComponent{Float64}
+            AbstractHeightDependentModelComponent{Float64}
     end
 
     @testset "eltype function" begin
