@@ -1,5 +1,22 @@
 {
-  "projectName": "TethysChlorisCore",
+  "projectName": "TethysChlorisCore.jl",
   "projectOwner": "EPFL-ENAC",
-  "files": ["README.md", "docs/src/index.md"]
+  "files": [
+    "README.md",
+    "docs/src/index.md"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "hsolleder",
+      "name": "H Solleder",
+      "avatar_url": "https://avatars.githubusercontent.com/u/9566930?v=4",
+      "profile": "https://github.com/hsolleder",
+      "contributions": [
+        "code"
+      ]
+    }
+  ]
 }
