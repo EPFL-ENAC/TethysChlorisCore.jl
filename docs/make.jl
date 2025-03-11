@@ -1,4 +1,5 @@
 using TethysChlorisCore
+using TethysChlorisCore.ModelComponents
 using Documenter
 
 DocMeta.setdocmeta!(
@@ -12,7 +13,7 @@ const numbered_pages = [
 ]
 
 makedocs(;
-    modules=[TethysChlorisCore],
+    modules=[TethysChlorisCore, TethysChlorisCore.ModelComponents],
     authors="Hugo Solleder <hugo.solleder@epfl.ch>",
     repo="https://github.com/EPFL-ENAC/TethysChlorisCore.jl/blob/{commit}{path}#{line}",
     sitename="TethysChlorisCore.jl",
