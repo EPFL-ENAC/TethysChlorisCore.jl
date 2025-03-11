@@ -1,11 +1,27 @@
 module TethysChlorisCore
 
-"""
-    hi = hello_world()
-A simple function to return "Hello, World!"
-"""
-function hello_world()
-    return "Hello, World!"
-end
+using NCDatasets
+
+include("ModelComponents.jl")
+using .ModelComponents
+
+export AbstractModelComponent
+export AbstractIndividualModelComponent, AbstractHeightDependentModelComponent
+export AbstractModelComponentSet
+
+export AbstractAuxiliaryVariables, AbstractHeightDependentAuxiliaryVariables
+export AbstractAuxiliaryVariableSet
+export AbstractForcingInputs, AbstractHeightDependentForcingInputs
+export AbstractForcingInputSet
+export AbstractParameters, AbstractHeightDependentParameters
+export AbstractParameterSet
+export AbstractStateVariables, AbstractHeightDependentStateVariables
+export AbstractStateVariableSet
+
+export AMC, AIMC, AHDMC, AMCS
+
+include("initialize.jl")
+export initialize, get_required_fields, validate_fields, preprocess_fields, initialize_field
+export get_dimensions
 
 end
