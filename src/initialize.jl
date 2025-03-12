@@ -16,7 +16,7 @@ Initialize model components with optional fields. The model component requires a
 function initialize(
     ::Type{FT}, ::Type{T}, data, args...
 ) where {FT<:AbstractFloat,T<:AbstractModelComponent}
-    required_fields = parentmodule(T).get_required_fields(T)
+    required_fields = get_required_fields(T)
 
     # Validate required fields
     if !isempty(required_fields)
@@ -35,10 +35,10 @@ function initialize(
     end
 
     # Component-specific validation
-    parentmodule(T).validate_fields(T, data)
+    validate_fields(T, data)
 
     # Preprocess fields
-    processed_data = parentmodule(T).preprocess_fields(FT, T, data, args...)
+    processed_data = preprocess_fields(FT, T, data, args...)
 
     # Initialize with provided fields only
     dict_kwargs = Dict{Symbol,Any}()
