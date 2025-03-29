@@ -1,7 +1,7 @@
 name = "TethysChlorisCore"
 uuid = "c22758e7-e854-5bdb-8df2-7602c47a9d98"
 authors = ["Hugo Solleder <hugo.solleder@epfl.ch>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
@@ -9,4 +9,5 @@ Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [compat]
 NCDatasets = "0.14"
+Revise = "3"
 julia = "1.10"
