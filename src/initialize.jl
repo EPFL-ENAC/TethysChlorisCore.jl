@@ -198,7 +198,7 @@ Initialize a field array with specified dimensions and optionally set initial co
 - `default`: Optional default value to use if no initial condition is found
 
 # Returns
-- Array{FT}: Initialized array with the specified dimensions, filled with initial conditions if available
+- `Array{FT}`: Initialized array with the specified dimensions, filled with initial conditions if available
 """
 function initialize_field(
     ::Type{FT},
