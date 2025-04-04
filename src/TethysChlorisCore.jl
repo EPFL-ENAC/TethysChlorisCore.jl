@@ -20,8 +20,12 @@ export AbstractStateVariableSet
 
 export AMC, AIMC, AHDMC, AMCS
 
+include("check_extraneous_fields.jl")
+export check_extraneous_fields
+
 include("initialize.jl")
-export initialize, get_required_fields, validate_fields, preprocess_fields, initialize_field
+export initialize, validate_fields, preprocess_fields, initialize_field
+export get_optional_fields, get_calculated_fields, get_required_fields
 export get_dimensions
 
 end
