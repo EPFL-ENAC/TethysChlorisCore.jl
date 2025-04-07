@@ -69,9 +69,43 @@ This is a default method that can be specialized for specific subtypes that need
 - `Vector{Symbol}`: A vector of symbols with the fields required to initialize the AbstractModelComponent type
 
 """
-function get_required_fields(
-    ::Type{T}
-) where {T<:Union{AbstractModelComponent,AbstractModelComponentSet}}
+function get_required_fields(::Type{T}) where {T<:AbstractModelComponent}
+    all_fields = Set(fieldnames(T))
+    optional_fields = Set(get_optional_fields(T))
+    calculated_fields = Set(get_calculated_fields(T))
+    return collect(setdiff(setdiff(all_fields, optional_fields), calculated_fields))
+end
+
+"""
+    get_optional_fields(::Type{T}) where {T<:AbstractModelComponent}
+
+Get a list of optional fields for a given model component type. Optional fields are those that can be omitted when creating
+a model component. By default, returns an empty list. Components should override this method if they have optional fields.
+
+# Arguments
+- `T`: Type of model component to get optional fields for
+
+# Returns
+- `Vector{Symbol}`: List of optional field names
+"""
+function get_optional_fields(::Type{T}) where {T<:AbstractModelComponent}
+    return Symbol[]
+end
+
+"""
+    get_calculated_fields(::Type{T}) where {T<:AbstractModelComponent}
+
+Get a list of calculated fields for a given model component type. Calculated fields are those that are computed based on
+other fields and should not be provided when creating a model component. By default, returns an empty list. Components
+should override this method if they have calculated fields.
+
+# Arguments
+- `T`: Type of model component to get calculated fields for
+
+# Returns
+- `Vector{Symbol}`: List of calculated field names
+"""
+function get_calculated_fields(::Type{T}) where {T<:AbstractModelComponent}
     return Symbol[]
 end
 
@@ -84,8 +118,10 @@ Performs some checks on the fields passed to initialize the AbstractModelCompone
 - `nothing`: If all fields are valid, the function returns nothing
 
 """
-function validate_fields(::Type{T}, data) where {T<:AbstractModelComponent}
-    return nothing
+function validate_fields(
+    ::Type{T}, data::Dict{String,Any}
+) where {T<:AbstractModelComponent}
+    return check_extraneous_fields(T, data)
 end
 
 # Default: no preprocessing
@@ -162,7 +198,7 @@ Initialize a field array with specified dimensions and optionally set initial co
 - `default`: Optional default value to use if no initial condition is found
 
 # Returns
-- Array{FT}: Initialized array with the specified dimensions, filled with initial conditions if available
+- `Array{FT}`: Initialized array with the specified dimensions, filled with initial conditions if available
 """
 function initialize_field(
     ::Type{FT},
