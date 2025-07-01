@@ -24,7 +24,10 @@ function initialize(
             filter(name -> !haskey(data, String(name)), required_fields)
         else # NCDataset
             filter(
-                name -> !haskey(data, String(name)) && !haskey(data.dim, String(name)),
+                name ->
+                    !haskey(data, String(name)) &&
+                    !haskey(data.dim, String(name)) &&
+                    !haskey(data.group, String(name)),
                 required_fields,
             )
         end
