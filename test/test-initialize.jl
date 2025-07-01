@@ -10,6 +10,21 @@ Base.@kwdef struct TestParams{FT<:AbstractFloat} <: AbstractParameters{FT}
 end
 
 function TethysChlorisCore.preprocess_fields(
+    ::Type{FT}, ::Type{TestParams}, data::NCDataset
+) where {FT<:AbstractFloat}
+    # Example preprocessing: convert all values to Float64
+    processed = Dict{String,Any}()
+    processed["required"] = data["required"][]
+    if haskey(data, "optional")
+        processed["optional"] = data["optional"][]
+    else
+        processed["optional"] = 0.0  # Default value if optional field is missing
+    end
+    processed["calculated"] = processed["required"] + processed["optional"]
+    return processed
+end
+
+function TethysChlorisCore.preprocess_fields(
     ::Type{FT}, ::Type{TestParams}, data::Dict{String,Any}
 ) where {FT<:AbstractFloat}
     # Example preprocessing: convert all values to Float64
@@ -55,16 +70,33 @@ end
 
 @testset "initialize" begin
     # Test successful initialization
-    data = Dict{String,Any}("required" => 1.0, "optional" => 2.0)
-    comp = initialize(Float64, TestParams, data)
-    @test comp.required == 1.0
-    @test comp.optional == 2.0
-    @test comp.calculated == 3.0
+    @testset "Dict" begin
+        data = Dict{String,Any}("required" => 1.0, "optional" => 2.0)
+        comp = initialize(Float64, TestParams, data)
+        @test comp.required == 1.0
+        @test comp.optional == 2.0
+        @test comp.calculated == 3.0
 
-    # Test missing required field
-    @test_throws ArgumentError initialize(
-        Float64, TestParams, Dict{String,Any}("optional" => 2.0)
-    )
+        # Test missing required field
+        @test_throws ArgumentError initialize(
+            Float64, TestParams, Dict{String,Any}("optional" => 2.0)
+        )
+    end
+
+    @testset "NCDataset" begin
+        mktempdir() do path
+            filename = joinpath(path, "test.nc")
+            ds = NCDataset(filename, "c")
+            # Create required variable
+            defVar(ds, "required", 1.0, ())
+            comp = initialize(Float64, TestParams, ds)
+            close(ds)
+            @test comp.required == 1.0
+
+            # # Test missing required field
+            @test_throws ArgumentError initialize(FT, TestParams, NCDataset(filename, "c"))
+        end
+    end
 end
 
 @testset "get_required_fields" begin

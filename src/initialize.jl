@@ -24,7 +24,10 @@ function initialize(
             filter(name -> !haskey(data, String(name)), required_fields)
         else # NCDataset
             filter(
-                name -> !haskey(data, String(name)) && !haskey(data.dim, String(name)),
+                name ->
+                    !haskey(data, String(name)) &&
+                    !haskey(data.dim, String(name)) &&
+                    !haskey(data.group, String(name)),
                 required_fields,
             )
         end
@@ -110,7 +113,8 @@ function get_calculated_fields(::Type{T}) where {T<:AbstractModelComponent}
 end
 
 """
-    validate_fields(::Type{T}) where {T<:AbstractModelComponent}
+    validate_fields(::Type{T}, data) where {T<:AbstractModelComponent}
+    validate_fields(::Type{T}, data::Dict{String,Any}) where {T<:AbstractModelComponent}
 
 Performs some checks on the fields passed to initialize the AbstractModelComponent type.
 
@@ -118,6 +122,10 @@ Performs some checks on the fields passed to initialize the AbstractModelCompone
 - `nothing`: If all fields are valid, the function returns nothing
 
 """
+function validate_fields(::Type{T}, data) where {T<:AbstractModelComponent}
+    return nothing
+end
+
 function validate_fields(
     ::Type{T}, data::Dict{String,Any}
 ) where {T<:AbstractModelComponent}
@@ -201,22 +209,23 @@ Initialize a field array with specified dimensions and optionally set initial co
 - `Array{FT}`: Initialized array with the specified dimensions, filled with initial conditions if available
 """
 function initialize_field(
-    ::Type{FT},
+    ::Type{T},
     data::NCDataset,
     name::String,
     dims::Tuple;
     default::Union{Nothing,Number}=nothing,
-) where {FT<:AbstractFloat}
-    arr = zeros(FT, dims)
+    row::Int=1,
+) where {T<:Number}
+    arr = zeros(T, dims)
 
     # Set initial condition if available
     if haskey(data, name)
-        ic = FT.(Array(data[name]))
+        ic = T.(Array(data[name]))
         # First dimension is time, rest are data dimensions
-        idx = (1, fill(:, length(dims) - 1)...)
+        idx = (row, fill(:, length(dims) - 1)...)
         arr[idx...] = ic
     elseif !isnothing(default)
-        idx = (1, fill(:, length(dims) - 1)...)
+        idx = (row, fill(:, length(dims) - 1)...)
         if default isa Number
             arr[idx...] .= default
         else
