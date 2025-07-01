@@ -201,22 +201,23 @@ Initialize a field array with specified dimensions and optionally set initial co
 - `Array{FT}`: Initialized array with the specified dimensions, filled with initial conditions if available
 """
 function initialize_field(
-    ::Type{FT},
+    ::Type{T},
     data::NCDataset,
     name::String,
     dims::Tuple;
     default::Union{Nothing,Number}=nothing,
-) where {FT<:AbstractFloat}
-    arr = zeros(FT, dims)
+    row::Int=1,
+) where {T<:Number}
+    arr = zeros(T, dims)
 
     # Set initial condition if available
     if haskey(data, name)
-        ic = FT.(Array(data[name]))
+        ic = T.(Array(data[name]))
         # First dimension is time, rest are data dimensions
-        idx = (1, fill(:, length(dims) - 1)...)
+        idx = (row, fill(:, length(dims) - 1)...)
         arr[idx...] = ic
     elseif !isnothing(default)
-        idx = (1, fill(:, length(dims) - 1)...)
+        idx = (row, fill(:, length(dims) - 1)...)
         if default isa Number
             arr[idx...] .= default
         else
