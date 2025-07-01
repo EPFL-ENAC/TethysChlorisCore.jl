@@ -110,7 +110,8 @@ function get_calculated_fields(::Type{T}) where {T<:AbstractModelComponent}
 end
 
 """
-    validate_fields(::Type{T}) where {T<:AbstractModelComponent}
+    validate_fields(::Type{T}, data) where {T<:AbstractModelComponent}
+    validate_fields(::Type{T}, data::Dict{String,Any}) where {T<:AbstractModelComponent}
 
 Performs some checks on the fields passed to initialize the AbstractModelComponent type.
 
@@ -118,6 +119,10 @@ Performs some checks on the fields passed to initialize the AbstractModelCompone
 - `nothing`: If all fields are valid, the function returns nothing
 
 """
+function validate_fields(::Type{T}, data) where {T<:AbstractModelComponent}
+    return nothing
+end
+
 function validate_fields(
     ::Type{T}, data::Dict{String,Any}
 ) where {T<:AbstractModelComponent}
