@@ -13,6 +13,16 @@
 [![BestieTemplate](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/JuliaBesties/BestieTemplate.jl/main/docs/src/assets/badge.json)](https://github.com/JuliaBesties/BestieTemplate.jl)
 [![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/JuliaDiff/BlueStyle)
 
+This package aims to facilitate the use of the [Tethys-Chloris (T&C) model](https://hyd.ifu.ethz.ch/research-data-models/t-c.html) implementation in Julia by centralizing shared utilities and types that are used by the T&C model and its extensions. The T&C model is a mechanistic model designed to simulate essential components of the hydrological and carbon cycles, resolving exchanges of energy, water, and CO2 between the land surface and the planetary boundary layer with an hourly time step. 
+
+More information regarding the T&C model
+* [full description](https://hyd.ifu.ethz.ch/research-data-models/t-c/t-c-full-description.html)
+* [original MATLAB code](https://github.com/simonefatichi/TeC_Source_Code)
+
+The TethysChlorisCore.jl package is currently used in
+* [TethysChloris.jl](https://github.com/CHANGE-EPFL/TethysChloris.jl)
+* [UrbanTethysChloris.jl](https://github.com/simonefatichi/TeC_Source_Code)
+
 ## How to Cite
 
 If you use TethysChlorisCore.jl in your work, please cite using the reference given in [CITATION.cff](https://github.com/EPFL-ENAC/TethysChlorisCore.jl/blob/main/CITATION.cff).
