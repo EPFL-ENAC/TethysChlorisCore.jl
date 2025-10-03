@@ -10,7 +10,7 @@ Base.@kwdef struct TestParams{FT<:AbstractFloat} <: AbstractParameters{FT}
 end
 
 function TethysChlorisCore.preprocess_fields(
-    ::Type{FT}, ::Type{TestParams}, data::NCDataset
+    ::Type{FT}, ::Type{TestParams}, data::NCDataset, params
 ) where {FT<:AbstractFloat}
     # Example preprocessing: convert all values to Float64
     processed = Dict{String,Any}()
@@ -25,7 +25,7 @@ function TethysChlorisCore.preprocess_fields(
 end
 
 function TethysChlorisCore.preprocess_fields(
-    ::Type{FT}, ::Type{TestParams}, data::Dict{String,Any}
+    ::Type{FT}, ::Type{TestParams}, data::Dict{String,Any}, params
 ) where {FT<:AbstractFloat}
     # Example preprocessing: convert all values to Float64
     processed = copy(data)
@@ -111,13 +111,13 @@ end
 @testset "preprocess_fields" begin
     # Test default preprocessing
     data = Dict("test" => 1.0)
-    @test preprocess_fields(Float64, TestParams, data) === data
+    @test preprocess_fields(Float64, TestParams, data, (FT,)) === data
 
     # Test auxiliary variables preprocessing
     mktempdir() do path
         filename = joinpath(path, "test.nc")
         ds = NCDataset(filename, "c")
-        processed = preprocess_fields(Float64, TestAuxVars, ds)
+        processed = preprocess_fields(Float64, TestAuxVars, ds, (FT,))
         @test haskey(processed, "var1")
         @test haskey(processed, "var2")
         @test size(processed["var1"]) == (10, 5)
@@ -150,4 +150,17 @@ end
     dims = get_dimensions(TestAuxVars, nothing)
     @test dims["var1"] == (10, 5)
     @test dims["var2"] == (10, 5, 3)
+end
+
+@testset "Multi-parametric composite types" begin
+    Base.@kwdef struct MultiParametricComponent{FT<:AbstractFloat,N,M} <:
+                       AbstractModelComponent{FT}
+        required::FT
+        optional::FT
+        calculated::FT
+    end
+
+    valid_data = Dict{String,Any}("required" => 1.0, "optional" => 2.0, "calculated" => 3.0)
+
+    initialized = initialize(Float64, MultiParametricComponent, valid_data, (Float64, 2, 3))
 end
