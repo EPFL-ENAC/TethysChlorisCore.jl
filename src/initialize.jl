@@ -1,20 +1,22 @@
 """
-    initialize(::Type{FT}, ::Type{T}, data::Dict{String,Any}, args...) where {FT<:AbstractFloat, T<:AbstractModelComponent}
+    initialize(
+        ::Type{FT}, ::Type{T}, data, params::Tuple=(FT,), args...
+    ) where {FT<:AbstractFloat, T<:AbstractModelComponent}
 
 Initialize model components with optional fields. The model component requires a keyword constructor.
-
 
 # Arguments
 - `::Type{FT}`: Floating point precision type (e.g., Float32 or Float64)
 - `::Type{T}`: Component type constructor that subclasses AbstractModelComponent
 - `data`: Data source (e.g., Dict for Parameters, NCDataset for State/Auxiliary variables)
+- `params`: Tuple of parameters for the model component
 - `args...`: Additional arguments passed to preprocess_fields
 
 # Returns
 - `T{FT}`: Initialized component struct of type T with floating point precision FT
 """
 function initialize(
-    ::Type{FT}, ::Type{T}, data, args...
+    ::Type{FT}, ::Type{T}, data, params::Tuple=(FT,), args...
 ) where {FT<:AbstractFloat,T<:AbstractModelComponent}
     required_fields = get_required_fields(T)
 
@@ -41,7 +43,7 @@ function initialize(
     validate_fields(T, data)
 
     # Preprocess fields
-    processed_data = preprocess_fields(FT, T, data, args...)
+    processed_data = preprocess_fields(FT, T, data, params, args...)
 
     # Initialize with provided fields only
     dict_kwargs = Dict{Symbol,Any}()
@@ -58,8 +60,10 @@ function initialize(
         end
     end
 
-    # Create with keyword constructor and additional args
-    return T{FT}(; dict_kwargs...)
+    # Create concrete type using provided parameters
+    concrete_type = T{params...}
+
+    return concrete_type(; dict_kwargs...)
 end
 
 """
@@ -142,6 +146,7 @@ Preprocess fields before the initialization of a given AbstractModelComponent ty
 - `FT`: Type parameter for floating point precision
 - `T`: Type parameter for model components
 - `data`: Input data to be preprocessed
+- `params`: Tuple of parameters for the model component
 - `args...`: Additional arguments
 
 # Returns
@@ -151,7 +156,7 @@ This is a default implementation that passes through the input data unchanged.
 Custom preprocessing can be implemented by defining methods for specific types.
 """
 function preprocess_fields(
-    ::Type{FT}, ::Type{T}, data, args...
+    ::Type{FT}, ::Type{T}, data, params, args...
 ) where {FT<:AbstractFloat,T<:AbstractModelComponent}
     return data
 end
@@ -174,7 +179,7 @@ Initialize fields for auxiliary variables based on their dimension specification
 - `Dict{String,Any}`: Dictionary of initialized fields
 """
 function preprocess_fields(
-    ::Type{FT}, ::Type{T}, data::NCDataset
+    ::Type{FT}, ::Type{T}, data::NCDataset, params
 ) where {FT<:AbstractFloat,T<:AbstractAuxiliaryVariables}
     processed = Dict{String,Any}()
 
