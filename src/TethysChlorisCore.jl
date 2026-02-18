@@ -1,6 +1,10 @@
 module TethysChlorisCore
 
 using NCDatasets
+using SimpleNonlinearSolve: AbstractSimpleNonlinearSolveAlgorithm, SimpleNonlinearSolve
+using SimpleNonlinearSolve: solve, IntervalNonlinearProblem
+using BracketingNonlinearSolve: AbstractBracketingAlgorithm
+using SciMLBase: successful_retcode
 
 include("ModelComponents.jl")
 using .ModelComponents
@@ -30,7 +34,13 @@ export get_dimensions
 
 include("options.jl")
 export AbstractOptions
-export AbstractModelOptions, AbstractODEOptions, AbstractZeroFindingStrategies
-export ZeroFindingStrategies, find_root
+export AbstractModelOptions, AbstractODEOptions, ODEOptions
+
+include("ZeroFindingStrategies.jl")
+export AbstractZeroFindingStrategies, ZeroFindingStrategies
+export SimpleBrentStrategy
+
+include("find_root.jl")
+export find_root
 
 end
