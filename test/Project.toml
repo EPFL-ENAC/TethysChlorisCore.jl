@@ -1,3 +1,4 @@
 [deps]
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+SimpleNonlinearSolve = "727e6d20-b764-4bd8-a329-72de5adea6c7"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
