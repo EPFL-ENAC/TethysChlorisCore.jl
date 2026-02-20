@@ -4,12 +4,11 @@
         f,
         x0,
         strategy::ZeroFindingStrategies{M};
-        search_range = nothing,
+        search_range = 10.0,
     ) where {M}
 
 Wrapper function to find a root of the function `f` using the specified `strategy`, given an
-initial guess `x0`. Current implementations exists for both `Roots.jl` and
-`SimpleNonlinearSolve.jl` strategies.
+initial guess `x0`. Current implementation uses bracketing-based SimpleNonlinearSolve.jl` strategies.
 
 # Arguments
 - `f`: Function for which to find a root

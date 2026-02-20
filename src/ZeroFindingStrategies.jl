@@ -72,21 +72,23 @@ The default tolerances are hard-coded based on the documentation of NonlinearSol
 - `(abstol, reltol, maxiters)`: Tuple containing the default absolute tolerance, relative tolerance, and maximum iterations
 
 """
-function default_tolerances(
-    method::AbstractSimpleNonlinearSolveAlgorithm, ::Type{FT}
-) where {FT<:AbstractFloat}
+# Internal helper
+function _default_tolerances_simple(::Type{FT}) where {FT<:AbstractFloat}
     abstol = real(oneunit(FT)) * (eps(real(one(FT))))^(4 // 5)
     reltol = real(oneunit(FT)) * (eps(real(one(FT))))^(4 // 5)
     maxiters = 1000
     return (abstol, reltol, maxiters)
 end
 
+function default_tolerances(
+    method::AbstractSimpleNonlinearSolveAlgorithm, ::Type{FT}
+) where {FT<:AbstractFloat}
+    return _default_tolerances_simple(FT)
+end
+
 # for Brent in SimpleNonlinear Solve
 function default_tolerances(
     method::AbstractBracketingAlgorithm, ::Type{FT}
 ) where {FT<:AbstractFloat}
-    abstol = real(oneunit(FT)) * (eps(real(one(FT))))^(4 // 5)
-    reltol = real(oneunit(FT)) * (eps(real(one(FT))))^(4 // 5)
-    maxiters = 1000
-    return (abstol, reltol, maxiters)
+    return _default_tolerances_simple(FT)
 end
