@@ -141,6 +141,11 @@ end
         @test size(field) == (2, 3)
         @test all(field .== 0.0)
 
+        defVar(ds, "existent", 1.0, ())
+        field = initialize_field(Float64, ds, "existent", (4,))
+        @test size(field) == (4,)
+        @test field[1] == 1
+
         return close(ds)
     end
 end

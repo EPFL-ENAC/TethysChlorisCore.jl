@@ -231,11 +231,7 @@ function initialize_field(
         arr[idx...] = ic
     elseif !isnothing(default)
         idx = (row, fill(:, length(dims) - 1)...)
-        if default isa Number
-            arr[idx...] .= default
-        else
-            arr[idx...] = default
-        end
+        arr[idx...] .= default
     end
 
     return arr
