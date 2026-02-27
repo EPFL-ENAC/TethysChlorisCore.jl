@@ -6,6 +6,8 @@ using SimpleNonlinearSolve: solve, IntervalNonlinearProblem
 using BracketingNonlinearSolve: AbstractBracketingAlgorithm
 using SciMLBase: successful_retcode
 
+abstract type AbstractModel end
+
 include("ModelComponents.jl")
 using .ModelComponents
 
@@ -43,4 +45,6 @@ export SimpleBrentStrategy
 include("find_root.jl")
 export find_root
 
+include("outputs.jl")
+include("accessors.jl")
 end
