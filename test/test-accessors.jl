@@ -1,6 +1,6 @@
 using Test
 using TethysChlorisCore
-using TethysChlorisCore: accessors, AllOutputs, NoOutputs
+using TethysChlorisCore: accessors, AllOutputs, NoOutputs, AbstractOutputsToSave
 using TethysChlorisCore: TethysChlorisCore, is_height_dependent
 
 # ============================================================================
@@ -28,7 +28,7 @@ struct TopComponent{FT<:AbstractFloat} <: AbstractModelComponent{FT}
 end
 
 # ============================================================================
-# Test types for three-level nesting with height dependency
+# Test types for three-level nesting (old tests - need AllOutputs support)
 # ============================================================================
 
 # Height-dependent parameters (Level 3)
@@ -107,14 +107,184 @@ Base.@kwdef struct InvalidParamSet2{FT<:AbstractFloat} <: AbstractModelComponent
 end
 
 # ============================================================================
+# Test types for fine-grained hierarchical selection
+# ============================================================================
+
+Base.@kwdef struct HeightDepVars{FT<:AbstractFloat}
+    field1::FT
+    field2::FT
+    field3::FT
+end
+
+Base.@kwdef struct HydroVars{FT<:AbstractFloat}
+    scalar::FT
+    high::HeightDepVars{FT}
+    low::HeightDepVars{FT}
+end
+
+Base.@kwdef struct VarSet{FT<:AbstractFloat} <: AbstractModelComponent{FT}
+    hydro::HydroVars{FT}
+end
+
+# ============================================================================
 # Output level definitions
 # ============================================================================
 
 TethysChlorisCore.decrease(::Type{AllOutputs}) = NoOutputs
 
+# AllOutputs for backward compatibility - includes all fields at all levels
 function TethysChlorisCore.outputs_to_save(::Type{T}, ::Type{AllOutputs}) where {T}
     return fieldnames(T)
 end
+
+# Define output levels for hierarchical selection tests
+struct MinimalOutputs <: AbstractOutputsToSave end
+struct SimpleOutputs <: AbstractOutputsToSave end
+struct ExtendedOutputs <: AbstractOutputsToSave end
+struct DirectOnlyOutputs <: AbstractOutputsToSave end
+struct HeightOnlyOutputs <: AbstractOutputsToSave end
+struct HighOnlyOutputs <: AbstractOutputsToSave end
+struct LowOnlyOutputs <: AbstractOutputsToSave end
+struct EmptyNestedOutputs <: AbstractOutputsToSave end
+
+# Decrease hierarchy
+TethysChlorisCore.decrease(::Type{ExtendedOutputs}) = SimpleOutputs
+TethysChlorisCore.decrease(::Type{SimpleOutputs}) = MinimalOutputs
+TethysChlorisCore.decrease(::Type{MinimalOutputs}) = NoOutputs
+TethysChlorisCore.decrease(::Type{DirectOnlyOutputs}) = NoOutputs
+TethysChlorisCore.decrease(::Type{HeightOnlyOutputs}) = NoOutputs
+TethysChlorisCore.decrease(::Type{HighOnlyOutputs}) = NoOutputs
+TethysChlorisCore.decrease(::Type{LowOnlyOutputs}) = NoOutputs
+TethysChlorisCore.decrease(::Type{EmptyNestedOutputs}) = NoOutputs
+
+# MinimalOutputs: only field1 from height-dependent, no scalar
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{MinimalOutputs}
+) where {FT}
+    (:hydro,)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{MinimalOutputs}
+) where {FT}
+    (:high, :low)
+end  # No scalar field
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HeightDepVars{FT}}, ::Type{MinimalOutputs}
+) where {FT}
+    (:field1,)
+end
+
+# SimpleOutputs: scalar + field1
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{SimpleOutputs}
+) where {FT}
+    (:hydro,)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{SimpleOutputs}
+) where {FT}
+    (:scalar, :high, :low)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HeightDepVars{FT}}, ::Type{SimpleOutputs}
+) where {FT}
+    (:field1,)
+end
+
+# ExtendedOutputs: scalar + field1 + field2
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{ExtendedOutputs}
+) where {FT}
+    (:hydro,)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{ExtendedOutputs}
+) where {FT}
+    (:scalar, :high, :low)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HeightDepVars{FT}}, ::Type{ExtendedOutputs}
+) where {FT}
+    (:field1, :field2)
+end
+
+# DirectOnlyOutputs: only scalar, no height fields
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{DirectOnlyOutputs}
+) where {FT}
+    (:hydro,)
+end
+function  # No :high or :low
+TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{DirectOnlyOutputs}
+) where {FT}
+    (:scalar,)
+end  # No :high or :low
+
+# HeightOnlyOutputs: only height fields, no scalar
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{HeightOnlyOutputs}
+) where {FT}
+    (:hydro,)
+end
+function  # No :scalar
+TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{HeightOnlyOutputs}
+) where {FT}
+    (:high, :low)
+end  # No :scalar
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HeightDepVars{FT}}, ::Type{HeightOnlyOutputs}
+) where {FT}
+    (:field1,)
+end
+
+# HighOnlyOutputs: only high layer
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{HighOnlyOutputs}
+) where {FT}
+    (:hydro,)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{HighOnlyOutputs}
+) where {FT}
+    (:high,)
+end  # Only :high, not :low
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HeightDepVars{FT}}, ::Type{HighOnlyOutputs}
+) where {FT}
+    (:field1,)
+end
+
+# LowOnlyOutputs: only low layer
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{LowOnlyOutputs}
+) where {FT}
+    (:hydro,)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{LowOnlyOutputs}
+) where {FT}
+    (:low,)
+end  # Only :low, not :high
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HeightDepVars{FT}}, ::Type{LowOnlyOutputs}
+) where {FT}
+    (:field1,)
+end
+
+# EmptyNestedOutputs: select :high and :low but return empty tuple for nested type
+function TethysChlorisCore.outputs_to_save(
+    ::Type{VarSet{FT}}, ::Type{EmptyNestedOutputs}
+) where {FT}
+    (:hydro,)
+end
+function TethysChlorisCore.outputs_to_save(
+    ::Type{HydroVars{FT}}, ::Type{EmptyNestedOutputs}
+) where {FT}
+    (:high, :low)
+end
+# HeightDepVars returns () by default (not overloaded) - tests strict mode
 
 # ============================================================================
 # Tests
@@ -147,7 +317,7 @@ end
     @test acc[:nested2][:field4](model) == 4.0
 end
 
-@testset "Three-level height-dependent accessors" begin
+@testset "Three-level height-dependent accessors with AllOutputs" begin
     acc = accessors(ParameterSet{Float64}, AllOutputs)
 
     # Verify structure
@@ -193,8 +363,8 @@ end
     @test acc[:soil][:Ohy](params) == 0.1
 end
 
-@testset "Asymmetric high/low fields" begin
-    # Should silently handle differences - create only fields that exist in each
+@testset "Asymmetric high/low fields with AllOutputs" begin
+    # Should create accessors for fields that exist in each
     acc = accessors(AsymmetricParamSet{Float64}, AllOutputs)
 
     @test haskey(acc, :vegetation)
@@ -229,10 +399,12 @@ end
     # Types with both high and low
     @test is_height_dependent(VegetationParameters{Float64})
     @test is_height_dependent(AsymmetricVegetationParams{Float64})
+    @test is_height_dependent(HydroVars{Float64})
 
     # Types without high/low
     @test !is_height_dependent(SoilParameters{Float64})
     @test !is_height_dependent(NestedComponent1)
+    @test !is_height_dependent(HeightDepVars{Float64})
 
     # Types with only high (should throw error)
     @test_throws ArgumentError is_height_dependent(InvalidParams{Float64})
@@ -245,4 +417,85 @@ end
     # Creating accessors should fail when component has only high or only low
     @test_throws ArgumentError accessors(InvalidParamSet{Float64}, AllOutputs)  # Only has :high
     @test_throws ArgumentError accessors(InvalidParamSet2{Float64}, AllOutputs)  # Only has :low
+end
+
+@testset "Fine-grained hierarchical output selection" begin
+    # Test MinimalOutputs: only field1 from height-dependent, no scalar
+    acc_minimal = accessors(VarSet{Float64}, MinimalOutputs)
+    @test haskey(acc_minimal, :hydro)
+    @test haskey(acc_minimal[:hydro], :field1_H)
+    @test haskey(acc_minimal[:hydro], :field1_L)
+    @test !haskey(acc_minimal[:hydro], :scalar)  # Not included
+    @test !haskey(acc_minimal[:hydro], :field2_H)  # Not included
+
+    # Test SimpleOutputs: scalar + field1
+    acc_simple = accessors(VarSet{Float64}, SimpleOutputs)
+    @test haskey(acc_simple, :hydro)
+    @test haskey(acc_simple[:hydro], :scalar)  # Now included
+    @test haskey(acc_simple[:hydro], :field1_H)
+    @test haskey(acc_simple[:hydro], :field1_L)
+    @test !haskey(acc_simple[:hydro], :field2_H)  # Still not included
+
+    # Test ExtendedOutputs: scalar + field1 + field2
+    acc_extended = accessors(VarSet{Float64}, ExtendedOutputs)
+    @test haskey(acc_extended, :hydro)
+    @test haskey(acc_extended[:hydro], :scalar)
+    @test haskey(acc_extended[:hydro], :field1_H)
+    @test haskey(acc_extended[:hydro], :field1_L)
+    @test haskey(acc_extended[:hydro], :field2_H)  # Now included
+    @test haskey(acc_extended[:hydro], :field2_L)  # Now included
+    @test !haskey(acc_extended[:hydro], :field3_H)  # Still not included
+
+    # Test accessor functions work correctly
+    model = VarSet(
+        hydro=HydroVars(
+            scalar=10.0,
+            high=HeightDepVars(field1=1.0, field2=2.0, field3=3.0),
+            low=HeightDepVars(field1=4.0, field2=5.0, field3=6.0),
+        ),
+    )
+
+    @test acc_simple[:hydro][:scalar](model) == 10.0
+    @test acc_simple[:hydro][:field1_H](model) == 1.0
+    @test acc_simple[:hydro][:field1_L](model) == 4.0
+    @test acc_extended[:hydro][:field2_H](model) == 2.0
+    @test acc_extended[:hydro][:field2_L](model) == 5.0
+end
+
+@testset "Independent control of direct and height-dependent fields" begin
+    # Test DirectOnlyOutputs: only scalar, no height fields
+    acc_direct = accessors(VarSet{Float64}, DirectOnlyOutputs)
+    @test haskey(acc_direct, :hydro)
+    @test haskey(acc_direct[:hydro], :scalar)
+    @test !haskey(acc_direct[:hydro], :field1_H)
+    @test !haskey(acc_direct[:hydro], :field1_L)
+
+    # Test HeightOnlyOutputs: only height fields, no scalar
+    acc_height = accessors(VarSet{Float64}, HeightOnlyOutputs)
+    @test haskey(acc_height, :hydro)
+    @test !haskey(acc_height[:hydro], :scalar)
+    @test haskey(acc_height[:hydro], :field1_H)
+    @test haskey(acc_height[:hydro], :field1_L)
+end
+
+@testset "Asymmetric height layer selection" begin
+    # Test HighOnlyOutputs: only high layer
+    acc_high = accessors(VarSet{Float64}, HighOnlyOutputs)
+    @test haskey(acc_high, :hydro)
+    @test haskey(acc_high[:hydro], :field1_H)
+    @test !haskey(acc_high[:hydro], :field1_L)
+
+    # Test LowOnlyOutputs: only low layer
+    acc_low = accessors(VarSet{Float64}, LowOnlyOutputs)
+    @test haskey(acc_low, :hydro)
+    @test !haskey(acc_low[:hydro], :field1_H)
+    @test haskey(acc_low[:hydro], :field1_L)
+end
+
+@testset "Strict mode: empty outputs_to_save" begin
+    # Select :high and :low but return empty tuple for nested type
+    # In strict mode, this should result in no accessors being created
+    acc_empty = accessors(VarSet{Float64}, EmptyNestedOutputs)
+    # The :hydro component should not be present because no fields could be created
+    @test !haskey(acc_empty, :hydro)  # Component not added when no fields available
 end
