@@ -5,6 +5,7 @@ using SimpleNonlinearSolve: AbstractSimpleNonlinearSolveAlgorithm, SimpleNonline
 using SimpleNonlinearSolve: solve, IntervalNonlinearProblem
 using BracketingNonlinearSolve: AbstractBracketingAlgorithm
 using SciMLBase: successful_retcode
+using StaticArraysCore: SVector, MVector
 
 abstract type AbstractModel end
 

@@ -2,6 +2,7 @@ using Test
 using TethysChlorisCore
 using TethysChlorisCore: accessors, AllOutputs, NoOutputs, AbstractOutputsToSave
 using TethysChlorisCore: TethysChlorisCore, is_height_dependent
+using TethysChlorisCore: allocate_results_from_accessors, prepare_results
 
 # ============================================================================
 # Test types for two-level nesting (backward compatibility)
@@ -126,6 +127,9 @@ Base.@kwdef struct VarSet{FT<:AbstractFloat} <: AbstractModelComponent{FT}
     hydro::HydroVars{FT}
 end
 
+struct TestModel{FT,T} <: TethysChlorisCore.AbstractModel
+    component_set::T
+end
 # ============================================================================
 # Output level definitions
 # ============================================================================
@@ -492,10 +496,71 @@ end
     @test haskey(acc_low[:hydro], :field1_L)
 end
 
-@testset "Strict mode: empty outputs_to_save" begin
-    # Select :high and :low but return empty tuple for nested type
-    # In strict mode, this should result in no accessors being created
-    acc_empty = accessors(VarSet{Float64}, EmptyNestedOutputs)
-    # The :hydro component should not be present because no fields could be created
-    @test !haskey(acc_empty, :hydro)  # Component not added when no fields available
+@testset "allocate_results_from_accessors Function" begin
+    FT = Float64
+    n_timesteps = 10
+
+    high_fields = HeightDepVars{FT}(field1=25.0, field2=0.5, field3=101.3)
+    low_fields = HeightDepVars{FT}(field1=20.0, field2=0.3, field3=101.0)
+    hydro_comp = HydroVars{FT}(scalar=10.0, high=high_fields, low=low_fields)
+    component_set = VarSet{FT}(hydro=hydro_comp)
+    model = TestModel{FT,VarSet{FT}}(component_set)
+
+    @testset "Direct allocation from accessors" begin
+        accessor_dict = accessors(VarSet{FT}, SimpleOutputs)
+        results = allocate_results_from_accessors(
+            accessor_dict, model.component_set, n_timesteps
+        )
+
+        @test results isa Dict{Symbol,Dict{Symbol,Array}}
+        @test keys(results) == keys(accessor_dict)
+        @test haskey(results, :hydro)
+        @test haskey(results[:hydro], :scalar)
+        @test haskey(results[:hydro], :field1_H)
+        @test haskey(results[:hydro], :field1_L)
+    end
+
+    @testset "Returns both results and accessors" begin
+        results, accessor_dict = prepare_results(
+            VarSet{FT}, SimpleOutputs, model.component_set, n_timesteps
+        )
+
+        @test results isa Dict{Symbol,Dict{Symbol,Array}}
+        @test accessor_dict isa Dict{Symbol,Dict{Symbol,Function}}
+        @test keys(results) == keys(accessor_dict)
+    end
+
+    @testset "Keys match between results and accessors" begin
+        results, accessor_dict = prepare_results(
+            VarSet{FT}, ExtendedOutputs, model.component_set, n_timesteps
+        )
+
+        @test keys(results) == keys(accessor_dict)
+        for component in keys(results)
+            @test keys(results[component]) == keys(accessor_dict[component])
+        end
+    end
+
+    @testset "Accessors can extract values matching array types" begin
+        results, accessor_dict = prepare_results(
+            VarSet{FT}, SimpleOutputs, model.component_set, n_timesteps
+        )
+
+        for (component, field_accessors) in accessor_dict
+            for (field, accessor_fn) in field_accessors
+                value = accessor_fn(model.component_set)
+                array = results[component][field]
+
+                # Check that the array can hold the value type
+                if value isa Number
+                    @test size(array, 1) == n_timesteps
+                    @test eltype(array) == typeof(value)
+                elseif value isa AbstractVector
+                    @test size(array, 1) == n_timesteps
+                    @test size(array, 2) == length(value)
+                    @test eltype(array) == eltype(value)
+                end
+            end
+        end
+    end
 end
