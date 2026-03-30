@@ -1,21 +1,22 @@
 using TethysChlorisCore
-using Test
+using SafeTestsets
 
-#=
-Don't add your tests to runtests.jl. Instead, create files named
+@safetestset "Accessors" begin
+    include("test-accessors.jl")
+end
 
-    test-title-for-my-test.jl
+@safetestset "Check Extraneous Fields" begin
+    include("test-check_extraneous_fields.jl")
+end
 
-The file will be automatically included inside a `@testset` with title "Title For My Test".
-=#
-for (root, dirs, files) in walkdir(@__DIR__)
-    for file in files
-        if isnothing(match(r"^test-.*\.jl$", file))
-            continue
-        end
-        title = titlecase(replace(splitext(file[6:end])[1], "-" => " "))
-        @testset "$title" begin
-            include(file)
-        end
-    end
+@safetestset "Initialize" begin
+    include("test-initialize.jl")
+end
+
+@safetestset "Model Components" begin
+    include("test-ModelComponents.jl")
+end
+
+@safetestset "Options" begin
+    include("test-options.jl")
 end
