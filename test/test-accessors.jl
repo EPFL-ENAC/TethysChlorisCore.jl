@@ -2,7 +2,7 @@ using Test
 using TethysChlorisCore
 using TethysChlorisCore: accessors, AllOutputs, NoOutputs, AbstractOutputsToSave
 using TethysChlorisCore: TethysChlorisCore, is_height_dependent
-using TethysChlorisCore: allocate_results_from_accessors, prepare_results
+using TethysChlorisCore: allocate_results_from_accessors, prepare_component_results
 
 # ============================================================================
 # Test types for two-level nesting (backward compatibility)
@@ -521,7 +521,7 @@ end
     end
 
     @testset "Returns both results and accessors" begin
-        results, accessor_dict = prepare_results(
+        results, accessor_dict = prepare_component_results(
             VarSet{FT}, SimpleOutputs, model.component_set, n_timesteps
         )
 
@@ -531,7 +531,7 @@ end
     end
 
     @testset "Keys match between results and accessors" begin
-        results, accessor_dict = prepare_results(
+        results, accessor_dict = prepare_component_results(
             VarSet{FT}, ExtendedOutputs, model.component_set, n_timesteps
         )
 
@@ -542,7 +542,7 @@ end
     end
 
     @testset "Accessors can extract values matching array types" begin
-        results, accessor_dict = prepare_results(
+        results, accessor_dict = prepare_component_results(
             VarSet{FT}, SimpleOutputs, model.component_set, n_timesteps
         )
 

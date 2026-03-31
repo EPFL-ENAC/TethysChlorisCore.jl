@@ -196,7 +196,7 @@ function _allocate_field_array(field_instance::AbstractArray, n_timesteps::Int)
 end
 
 """
-    prepare_results(::Type{T}, ::Type{O}, model::M, n_timesteps::Int) where {T,O,M}
+    prepare_component_results(::Type{T}, ::Type{O}, model_component::M, n_timesteps::Int) where {T,O,M}
 
 Prepare both accessor functions and pre-allocated result arrays for a simulation.
 This is an optimized convenience function that creates the accessor dictionary once
@@ -205,7 +205,7 @@ and reuses it for both access and allocation.
 # Arguments
 - `T::Type{T}`: The model component type (e.g., `StateVariableSet`)
 - `O::Type{O}`: The outputs to save type (e.g., `SimpleOutputs`, `AllOutputs`)
-- `model::M`: The model instance
+- `model_component::M`: The model component instance
 - `n_timesteps::Int`: Number of timesteps in the simulation
 
 # Returns
@@ -217,23 +217,74 @@ and reuses it for both access and allocation.
 # Examples
 ```julia
 # Prepare for simulation
-results, accessors_dict = prepare_results(
+results, accessors_dict = prepare_component_results(
     StateVariableSet{Float64},
     SimpleOutputs,
-    model,
+    model_component,
     1000
 )
 
 # During simulation, assign values at each timestep
 for timestep in 1:1000
     # Update model state...
-    assign_results!(results, accessors_dict, model, timestep)
+    assign_component_results!(results, accessors_dict, model_component, timestep)
 end
 ```
 """
-function prepare_results(::Type{T}, ::Type{O}, model::M, n_timesteps::Int) where {T,O,M}
+function prepare_component_results(
+    ::Type{T}, ::Type{O}, model_component::M, n_timesteps::Int
+) where {T,O,M}
     accessors_dict = accessors(T, O)
-    results = allocate_results_from_accessors(accessors_dict, model, n_timesteps)
+    results = allocate_results_from_accessors(accessors_dict, model_component, n_timesteps)
 
     return results, accessors_dict
+end
+
+"""
+    assign_component_results!(
+        results::Dict{Symbol,Dict{Symbol,Array}},
+        accessors::Dict{Symbol,Dict{Symbol,Function}},
+        model_component::M,
+        timestep::Int,
+    ) where {M}
+
+Assign the current model variable values to the results arrays at the specified timestep.
+
+# Arguments
+- `results::Dict{Symbol,Dict{Symbol,Array}}`: Nested dictionary of results arrays
+- `accessors::Dict{Symbol,Dict{Symbol,Function}}`: Nested dictionary of accessor functions
+- `model_component::M`: The model component instance
+- `timestep::Int`: The current timestep index
+"""
+function assign_component_results!(
+    results::Dict{Symbol,Dict{Symbol,Array}},
+    accessors::Dict{Symbol,Dict{Symbol,Function}},
+    model_component::M,
+    timestep::Int,
+) where {M}
+    for (component_field, component_accessors) in accessors
+        for (field, accessor) in component_accessors
+            _assign_field!(
+                results[component_field][field], accessor(model_component), timestep
+            )
+        end
+    end
+    return nothing
+end
+
+function _assign_field!(field::AbstractVector, field_value::Number, timestep::Signed)
+    field[timestep] = field_value
+    return nothing
+end
+
+function _assign_field!(
+    field::AbstractMatrix, field_value::AbstractVector, timestep::Signed
+)
+    field[timestep, :] = field_value
+    return nothing
+end
+
+function _assign_field!(field::AbstractArray, field_value::AbstractMatrix, timestep::Signed)
+    field[timestep, :, :] = field_value
+    return nothing
 end
