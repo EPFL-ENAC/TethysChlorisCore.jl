@@ -5,6 +5,9 @@ using SimpleNonlinearSolve: AbstractSimpleNonlinearSolveAlgorithm, SimpleNonline
 using SimpleNonlinearSolve: solve, IntervalNonlinearProblem
 using BracketingNonlinearSolve: AbstractBracketingAlgorithm
 using SciMLBase: successful_retcode
+using StaticArraysCore: SVector, MVector
+
+abstract type AbstractModel end
 
 include("ModelComponents.jl")
 using .ModelComponents
@@ -43,4 +46,15 @@ export SimpleBrentStrategy
 include("find_root.jl")
 export find_root
 
+include("outputs.jl")
+export AbstractStorageFrequency
+export HourlyStorage, DailyStorage, StaticStorage, NoStorage
+export hourly_storage, daily_storage, static_storage, no_storage
+export storage_frequency
+export allocate_results_from_accessors, allocate_static_results_from_accessors
+export prepare_results, prepare_component_results
+export assign_results!, assign_component_results!
+
+include("accessors.jl")
+export accessors
 end
