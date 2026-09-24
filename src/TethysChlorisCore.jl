@@ -50,11 +50,14 @@ include("outputs.jl")
 export AbstractStorageFrequency
 export HourlyStorage, DailyStorage, StaticStorage, NoStorage
 export hourly_storage, daily_storage, static_storage, no_storage
-export storage_frequency
-export allocate_results_from_accessors, allocate_static_results_from_accessors
-export prepare_results, prepare_component_results
-export assign_results!, assign_component_results!
+export storage_frequency, storage_size
+export AbstractOutputsToSave, AllOutputs, NoOutputs
+export decrease, outputs_to_save
 
-include("accessors.jl")
-export accessors
+include("output_writer.jl")
+export VariableSpec, output_specs
+export add_variable!, chunksizes, axis_names
+export TimeBuffers, store_buffer!, flush_buffers!
+export assign_slice!, assign_average_slice!
+export cell_stats, domain_stats
 end

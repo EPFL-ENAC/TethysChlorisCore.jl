@@ -1,8 +1,8 @@
 using TethysChlorisCore
 using SafeTestsets
 
-@safetestset "Accessors" begin
-    include("test-accessors.jl")
+@safetestset "Output Writer" begin
+    include("test-output_writer.jl")
 end
 
 @safetestset "Check Extraneous Fields" begin
