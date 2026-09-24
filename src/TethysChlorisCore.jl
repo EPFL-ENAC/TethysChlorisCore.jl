@@ -57,7 +57,8 @@ export decrease, outputs_to_save
 include("output_writer.jl")
 export VariableSpec, output_specs
 export add_variable!, chunksizes, axis_names
-export TimeBuffers, store_buffer!, flush_buffers!
+export TimeEntry, TimeBuffers, store_buffer!, flush_buffers!
+export StreamTask, make_task, store_task!, flush_tasks!, init_buffers!
 export assign_slice!, assign_average_slice!
 export cell_stats, domain_stats
 end

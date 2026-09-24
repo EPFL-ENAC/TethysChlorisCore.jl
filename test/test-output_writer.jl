@@ -90,8 +90,8 @@ TethysChlorisCore.outputs_to_save(::Type{ToyLeaf}, ::Type{ToyOutputs}) = (:field
 
             store_buffer!(tb, getv, "g", :x, 1.0, 1, Float64)
             store_buffer!(tb, getv, "g", :x, [2.0, 2.5, 3.0], 2, Float64)
-            @test size(tb.buffers[("g", :x)]) == (4, 3)
-            @test tb.layouts[("g", :x)] == false
+            @test size(tb.buffers[("g", :x)].buf) == (4, 3)
+            @test tb.buffers[("g", :x)].timelast == false
             @test tb.fill == 0
 
             tb.fill = 2
@@ -115,13 +115,43 @@ TethysChlorisCore.outputs_to_save(::Type{ToyLeaf}, ::Type{ToyOutputs}) = (:field
 
             store_buffer!(tb, getv, "g", :y, [1.0, 1.5, 2.0], 1, Float64)
             store_buffer!(tb, getv, "g", :y, 0.0, 2, Float64)
-            @test size(tb.buffers[("g", :y)]) == (3, 4)
-            @test tb.layouts[("g", :y)] == true
+            @test size(tb.buffers[("g", :y)].buf) == (3, 4)
+            @test tb.buffers[("g", :y)].timelast == true
 
             tb.fill = 2
             flush_buffers!(tb, getv, 1:2)
             @test Array(w)[:, 1] == [1.0, 1.5, 2.0]
             @test Array(w)[:, 2] == [0.0, 0.0, 0.0]
+            close(ds)
+        end
+    end
+
+    @testset "eager init and task round-trip" begin
+        mktempdir() do tmp
+            ds = NCDataset(joinpath(tmp, "b.nc"), "c")
+            defDim(ds, "time", Inf)
+            defDim(ds, "aux", 2)
+            v = add_variable!(ds, :z, Float64, (:time, :aux); chunksizes=(32, 2))
+
+            tb = TimeBuffers(; buffer_len=4)
+            getv = (g, n) -> v
+            init_buffers!(tb, getv, [("g", :z)], Float64)
+            @test size(tb.buffers[("g", :z)].buf) == (4, 2)
+            @test tb.buffers[("g", :z)].timelast == false
+
+            tasks = [make_task(getv, "g", :z, nothing, x -> x, 4, Float64)]
+            @test size(tasks[1].buf) == (4, 2)
+            @test tasks[1].timelast == false
+
+            store_task!(tasks[1], 1.0, 1)
+            store_task!(tasks[1], [2.0, 3.0], 2)
+            @test tasks[1].buf[1, :] == [1.0, 1.0]
+            @test tasks[1].buf[2, :] == [2.0, 3.0]
+
+            @test flush_tasks!(tasks, 1:2) == true
+            @test Array(v)[1, :] == [1.0, 1.0]
+            @test Array(v)[2, :] == [2.0, 3.0]
+            @test flush_tasks!(tasks, 1:0) == false
             close(ds)
         end
     end

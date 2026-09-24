@@ -239,121 +239,224 @@ function add_variable!(
 end
 
 """
+    TimeEntry{V}
+
+Single slot buffer for one streamed variable: the in-RAM buffer plus its layout.
+
+# Fields
+- `buf::V`: slot buffer; variables whose time-like dimension comes first are shaped
+  `(buffer_len, dims...)`, variables with a trailing `time`/`naver` dimension are shaped
+  `(dims..., buffer_len)`
+- `timelast::Bool`: `true` when the time-like dimension of the variable is trailing
+"""
+Base.@kwdef struct TimeEntry{V}
+    buf::V
+    timelast::Bool
+end
+
+"""
     TimeBuffers(; buffer_len = 32)
 
 In-memory per-variable step buffers for streamed NetCDF writing. Writing hundreds of
 small NetCDF variables at every timestep is prohibitive with the HDF5 backend, so values
-are buffered for at most `buffer_len` timesteps and written chunk-wise. The buffer
-layout follows the variable: variables whose time-like dimension comes first are shaped
-`(buffer_len, dims...)`, variables with a trailing `time`/`naver` dimension are shaped
-`(dims..., buffer_len)`.
+are buffered for at most `buffer_len` timesteps and written chunk-wise. Entries are
+allocated lazily on first [`store_buffer!`](@ref) (or in advance with
+[`init_buffers!`](@ref)).
+
+# Fields
+- `buffers::Dict{Tuple{String,Symbol},TimeEntry}`: buffer entry per variable
+- `buffer_len::Int`: number of buffered timesteps per flush
+- `fill::Int`: slots filled since the last flush
 """
 mutable struct TimeBuffers
-    buffers::Dict{Tuple{String,Symbol},Any}
-    layouts::Dict{Tuple{String,Symbol},Bool}
+    buffers::Dict{Tuple{String,Symbol},TimeEntry}
     buffer_len::Int
     fill::Int
 end
 
 function TimeBuffers(; buffer_len::Int=32)
-    TimeBuffers(
-        Dict{Tuple{String,Symbol},Any}(), Dict{Tuple{String,Symbol},Bool}(), buffer_len, 0
-    )
+    TimeBuffers(Dict{Tuple{String,Symbol},TimeEntry}(), buffer_len, 0)
+end
+
+# Allocate the slot buffer of `var` following its time-like-dimension layout, returning
+# the buffer and whether the time-like dimension is trailing.
+function _buffer_alloc(var, buffer_len::Int, ::Type{FT}) where {FT}
+    lastn = last(dimnames(var))
+    timelast = lastn == "time" || lastn == "naver"
+    if timelast
+        tails = Tuple(Int(s) for s in size(var)[1:(end - 1)])
+        return fill(FT(NaN), (tails..., buffer_len)), timelast
+    end
+    tails = Tuple(Int(s) for s in size(var)[2:end])
+    return fill(FT(NaN), (buffer_len, tails...)), timelast
 end
 
 function _buffer_init!(
     tb::TimeBuffers, getvar, key::Tuple{String,Symbol}, ::Type{FT}
 ) where {FT}
-    return get!(tb.buffers, key) do
-        var = getvar(key[1], key[2])
-        lastn = last(dimnames(var))
-        time_last = lastn == "time" || lastn == "naver"
-        tb.layouts[key] = time_last
-        if time_last
-            tails = Tuple(Int(s) for s in size(var)[1:(end - 1)])
-            return fill(FT(NaN), (tails..., tb.buffer_len))
+    buf, timelast = _buffer_alloc(getvar(key[1], key[2]), tb.buffer_len, FT)
+    entry = TimeEntry(; buf=buf, timelast=timelast)
+    tb.buffers[key] = entry
+    return entry
+end
+
+"""
+    init_buffers!(tb, getvar, keys, ::Type{FT})
+
+Allocate the buffer entries of all `keys` in advance; lazily allocated otherwise on
+first [`store_buffer!`](@ref). Already initialized entries are left untouched.
+"""
+function init_buffers!(tb::TimeBuffers, getvar, keys, ::Type{FT}) where {FT}
+    for key in keys
+        get(tb.buffers, key, nothing) === nothing && _buffer_init!(tb, getvar, key, FT)
+    end
+    return tb
+end
+
+function _tb_store!(buf, x, timelast::Bool, slot::Int)
+    if timelast
+        if x isa Real
+            if ndims(buf) == 1
+                buf[slot] = x
+            else
+                buf[:, slot] .= x
+            end
+        elseif x isa AbstractVector
+            buf[:, slot] = x
+        else
+            buf[:, :, slot] = x
         end
-        tails = Tuple(Int(s) for s in size(var)[2:end])
-        return fill(FT(NaN), (tb.buffer_len, tails...))
-    end
-end
-
-function _tb_store!(buf, x::Real, ::Val{false}, slot::Int)
-    if ndims(buf) == 1
-        buf[slot] = x
     else
-        buf[slot, :] .= x
+        if x isa Real
+            if ndims(buf) == 1
+                buf[slot] = x
+            else
+                buf[slot, :] .= x
+            end
+        elseif x isa AbstractVector
+            buf[slot, :] = x
+        else
+            buf[slot, :, :] = x
+        end
     end
-    return nothing
-end
-
-function _tb_store!(buf, x::AbstractVector, ::Val{false}, slot::Int)
-    buf[slot, :] = x
-    return nothing
-end
-
-function _tb_store!(buf, x::AbstractMatrix, ::Val{false}, slot::Int)
-    buf[slot, :, :] = x
-    return nothing
-end
-
-function _tb_store!(buf, x::Real, ::Val{true}, slot::Int)
-    if ndims(buf) == 1
-        buf[slot] = x
-    else
-        buf[:, slot] .= x
-    end
-    return nothing
-end
-
-function _tb_store!(buf, x::AbstractVector, ::Val{true}, slot::Int)
-    buf[:, slot] = x
-    return nothing
-end
-
-function _tb_store!(buf, x::AbstractMatrix, ::Val{true}, slot::Int)
-    buf[:, :, slot] = x
     return nothing
 end
 
 """
     store_buffer!(tb, getvar, group, name, x, slot, ::Type{FT})
 
-Store one value for variable `(group, name)` in the buffer at slot `slot`. The variable
-handle is fetched through `getvar(group, name)` to determine shape and layout.
+Store one value for variable `(group, name)` in the buffer at slot `slot`. The entry is
+fetched through a single dictionary lookup; the variable handle is only used through
+`getvar(group, name)` on lazily-init (shape and layout).
 """
 function store_buffer!(
     tb::TimeBuffers, getvar, group::String, name::Symbol, x, slot::Int, ::Type{FT}
 ) where {FT}
     key = (group, name)
-    buf = _buffer_init!(tb, getvar, key, FT)
-    _tb_store!(buf, x, Val(tb.layouts[key]), slot)
+    entry = get(tb.buffers, key, nothing)
+    if isnothing(entry)
+        entry = _buffer_init!(tb, getvar, key, FT)
+    end
+    _tb_store!(entry.buf, x, entry.timelast, slot)
     return nothing
 end
 
 """
-    flush_buffers!(tb, getvar, window)
+    flush_buffers!(tb, getvar, window) -> Bool
 
 Write all buffered values into their NetCDF variables. `getvar(group, name)` returns the
-variable handle; `window` is the timestep range covered by the buffered slots. The buffers
-and layouts are kept allocated and reused across flushes; every store overwrites the full
-slot, so stale slots are never flushed.
+variable handle; `window` is the timestep range covered by the buffered slots. The entries
+are kept allocated and reused across flushes; every store overwrites the full slot, so
+stale slots are never flushed. Returns whether anything was flushed.
 """
 function flush_buffers!(tb::TimeBuffers, getvar, window::UnitRange{Int})
     n = tb.fill
-    n == 0 && return nothing
-    for (key, buf) in tb.buffers
+    n == 0 && return false
+    for (key, entry) in tb.buffers
+        buf = entry.buf
         var = getvar(key[1], key[2])
-        if tb.layouts[key]
-            slices = ntuple(_ -> Colon(), ndims(buf) - 1)
+        slices = ntuple(_ -> Colon(), ndims(buf) - 1)
+        if entry.timelast
             var[slices..., window] = buf[slices..., 1:n]
         else
-            slices = ntuple(_ -> Colon(), ndims(buf) - 1)
             var[window, slices...] = buf[1:n, slices...]
         end
     end
     tb.fill = 0
+    return true
+end
+
+"""
+    StreamTask
+
+Precomputed per-variable save task for a manager's flat hot loop: the source instance,
+the extractor, the slot buffer and the NetCDF variable handle are all captured at
+task-creation time. The per-timestep loop then does one call per task — no reflection, no
+dict lookups, no string allocation.
+
+A task set is stepped as
+`for t in tasks; x = t.extract(t.source); isnothing(x) || store_task!(t, x, slot); end`
+and flushed with [`flush_tasks!`](@ref). [`make_task`](@ref) builds tasks from variable
+handles.
+
+# Fields
+- `source`: component-set instance supplying the values
+- `extract`: `x -> value` for the source instance
+- `buf`: slot buffer, shaped by the variable layout
+- `var`: target NetCDF variable
+- `timelast::Bool`: `true` when the time-like dimension of the variable is trailing
+"""
+Base.@kwdef struct StreamTask
+    source::Any
+    extract::Any
+    buf::Any
+    var::Any
+    timelast::Bool
+end
+
+"""
+    make_task(getvar, group, name, source, extract, buffer_len, ::Type{FT}) -> StreamTask
+
+Build a [`StreamTask`](@ref) for variable `(group, name)`, allocating its slot buffer
+eagerly from the variable's shape.
+"""
+function make_task(
+    getvar, group::String, name::Symbol, source, extract, buffer_len::Int, ::Type{FT}
+) where {FT}
+    var = getvar(group, name)
+    buf, timelast = _buffer_alloc(var, buffer_len, FT)
+    return StreamTask(; source=source, extract=extract, buf=buf, var=var, timelast=timelast)
+end
+
+"""
+    store_task!(t::StreamTask, x, slot)
+
+Store the step value `x` for the task into its buffer at slot `slot`.
+"""
+function store_task!(t::StreamTask, x, slot::Int)
+    _tb_store!(t.buf, x, t.timelast, slot)
     return nothing
+end
+
+"""
+    flush_tasks!(tasks, window) -> Bool
+
+Write every task's buffered slots into its NetCDF variable; `window` is the timestep
+range covered by the buffered slots. Returns whether anything was flushed.
+"""
+function flush_tasks!(tasks::Vector{StreamTask}, window::UnitRange{Int})
+    n = length(window)
+    n == 0 && return false
+    for t in tasks
+        buf = t.buf
+        slices = ntuple(_ -> Colon(), ndims(buf) - 1)
+        if t.timelast
+            t.var[slices..., window] = buf[slices..., 1:n]
+        else
+            t.var[window, slices...] = buf[1:n, slices...]
+        end
+    end
+    return true
 end
 
 """
