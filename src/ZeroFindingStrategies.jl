@@ -12,7 +12,6 @@ abstract type AbstractZeroFindingStrategies <: AbstractOptions end
 strategy = SimpleBrentStrategy(Float64; abstol=1e-8, reltol=1e-6, maxiters=500)
 ```
 """
-
 struct ZeroFindingStrategies{M} <: AbstractZeroFindingStrategies
     method::M
     kwargs::NamedTuple
@@ -72,7 +71,6 @@ The default tolerances are hard-coded based on the documentation of NonlinearSol
 - `(abstol, reltol, maxiters)`: Tuple containing the default absolute tolerance, relative tolerance, and maximum iterations
 
 """
-# Internal helper
 function _default_tolerances_simple(::Type{FT}) where {FT<:AbstractFloat}
     abstol = real(oneunit(FT)) * (eps(real(one(FT))))^(4 // 5)
     reltol = real(oneunit(FT)) * (eps(real(one(FT))))^(4 // 5)
